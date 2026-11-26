@@ -1,0 +1,385 @@
+{
+  "id": "5d030841-cfdf-4dbf-8b0c-5396cd6dab5a",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.bootstrap_state": {
+      "name": "bootstrap_state",
+      "schema": "",
+      "columns": {
+        "patient_id": {
+          "name": "patient_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "first_bootstrap_at": {
+          "name": "first_bootstrap_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_bootstrap_at": {
+          "name": "last_bootstrap_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "bootstrap_count": {
+          "name": "bootstrap_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "gap_episode_open": {
+          "name": "gap_episode_open",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "gap_rebootstrap_used": {
+          "name": "gap_rebootstrap_used",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "bootstrap_state_count_chk": {
+          "name": "bootstrap_state_count_chk",
+          "value": "\"bootstrap_state\".\"bootstrap_count\" >= 1"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.consumer_offsets": {
+      "name": "consumer_offsets",
+      "schema": "",
+      "columns": {
+        "consumer_name": {
+          "name": "consumer_name",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "last_event_id": {
+          "name": "last_event_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.dose_outcome_projection": {
+      "name": "dose_outcome_projection",
+      "schema": "",
+      "columns": {
+        "dose_id": {
+          "name": "dose_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "patient_id": {
+          "name": "patient_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "scheduled_at": {
+          "name": "scheduled_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "outcome": {
+          "name": "outcome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actor_id": {
+          "name": "actor_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "occurred_at": {
+          "name": "occurred_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "medicine_id": {
+          "name": "medicine_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_projection_patient_sched": {
+          "name": "idx_projection_patient_sched",
+          "columns": [
+            {
+              "expression": "patient_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "scheduled_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "dose_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_projection_patient": {
+          "name": "idx_projection_patient",
+          "columns": [
+            {
+              "expression": "patient_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "dose_outcome_projection_outcome_chk": {
+          "name": "dose_outcome_projection_outcome_chk",
+          "value": "\"dose_outcome_projection\".\"outcome\" IN ('taken-on-time','taken-late','skipped','missed')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.gamification_state": {
+      "name": "gamification_state",
+      "schema": "",
+      "columns": {
+        "patient_id": {
+          "name": "patient_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "harmony_points": {
+          "name": "harmony_points",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "theme_state": {
+          "name": "theme_state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "gamification_state_points_chk": {
+          "name": "gamification_state_points_chk",
+          "value": "\"gamification_state\".\"harmony_points\" >= 0"
+        },
+        "gamification_state_theme_chk": {
+          "name": "gamification_state_theme_chk",
+          "value": "\"gamification_state\".\"theme_state\" IN ('Harmony','Uneasy','Horror')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.purge_tombstones": {
+      "name": "purge_tombstones",
+      "schema": "",
+      "columns": {
+        "patient_id": {
+          "name": "patient_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "purged_at": {
+          "name": "purged_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.processed_event_markers": {
+      "name": "processed_event_markers",
+      "schema": "",
+      "columns": {
+        "event_id": {
+          "name": "event_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "action": {
+          "name": "action",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "patient_id": {
+          "name": "patient_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "processed_at": {
+          "name": "processed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_markers_processed_at": {
+          "name": "idx_markers_processed_at",
+          "columns": [
+            {
+              "expression": "processed_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_markers_patient": {
+          "name": "idx_markers_patient",
+          "columns": [
+            {
+              "expression": "patient_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "processed_event_markers_event_id_action_pk": {
+          "name": "processed_event_markers_event_id_action_pk",
+          "columns": ["event_id", "action"]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
