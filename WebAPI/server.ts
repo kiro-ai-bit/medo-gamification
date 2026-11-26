@@ -19,6 +19,7 @@ const built = await buildApp({
   db: database.db,
   gamificationQueryable: database.queryable,
   brokerQueryable: broker.queryable,
+  startWorkers: true,
 });
 
 const shutdown = async () => {

@@ -75,6 +75,7 @@ export function makeConfig(
     identityJwksUrl: "http://identity.test/.well-known/jwks.json",
     servicePrivateKey: keys.gamificationServicePrivateJwk,
     careBaseUrl: "http://care.test",
+    scheduleDoseBaseUrl: "http://schedule-dose.test",
     sentryDsn: "",
     ...overrides,
   };

@@ -255,6 +255,8 @@ export function createBootstrapStateRepo() {
           gapEpisodeOpen: true,
           gapRebootstrapUsed: true,
           lastBootstrapAt: now,
+          // §5.4 — bootstrap_count grows only on gap episodes (initial = 1).
+          bootstrapCount: sql`${bootstrapState.bootstrapCount} + 1`,
           updatedAt: now,
         })
         .where(eq(bootstrapState.patientId, patientId));

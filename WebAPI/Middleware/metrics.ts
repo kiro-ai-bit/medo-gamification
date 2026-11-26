@@ -7,6 +7,16 @@ export function createMetrics() {
     string,
     { name: string; labels: Record<string, string>; value: number }
   >();
+  const histograms = new Map<
+    string,
+    { name: string; labels: Record<string, string>; sum: number; count: number }
+  >();
+  const labelStr = (labels: Record<string, string>) =>
+    Object.keys(labels).length
+      ? `{${Object.entries(labels)
+          .map(([k, v]) => `${k}="${v}"`)
+          .join(",")}}`
+      : "";
   return {
     incr(name: string, labels: Record<string, string> = {}, by = 1): void {
       const key = `${name}|${JSON.stringify(labels)}`;
@@ -14,16 +24,27 @@ export function createMetrics() {
       c.value += by;
       counters.set(key, c);
     },
+    observe(
+      name: string,
+      labels: Record<string, string> = {},
+      value = 0,
+    ): void {
+      const key = `${name}|${JSON.stringify(labels)}`;
+      const h = histograms.get(key) ?? { name, labels, sum: 0, count: 0 };
+      h.sum += value;
+      h.count += 1;
+      histograms.set(key, h);
+    },
     render(): string {
       const lines: string[] = [];
       for (const c of counters.values()) {
-        const labelStr = Object.keys(c.labels).length
-          ? `{${Object.entries(c.labels)
-              .map(([k, v]) => `${k}="${v}"`)
-              .join(",")}}`
-          : "";
         lines.push(`# TYPE ${c.name} counter`);
-        lines.push(`${c.name}${labelStr} ${c.value}`);
+        lines.push(`${c.name}${labelStr(c.labels)} ${c.value}`);
+      }
+      for (const h of histograms.values()) {
+        lines.push(`# TYPE ${h.name} histogram`);
+        lines.push(`${h.name}_sum${labelStr(h.labels)} ${h.sum}`);
+        lines.push(`${h.name}_count${labelStr(h.labels)} ${h.count}`);
       }
       return lines.join("\n") + "\n";
     },

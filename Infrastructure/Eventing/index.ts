@@ -31,6 +31,7 @@ export async function startGamificationConsumer(deps: {
   brokerDsn?: string;
   dispatch: (event: BrokerEvent) => Promise<void>;
   logger?: Logger;
+  autoStart?: boolean;
 }): Promise<ConsumerHandle> {
   return createConsumerWorker({
     service: deps.service,
@@ -40,5 +41,6 @@ export async function startGamificationConsumer(deps: {
     dispatch: deps.dispatch,
     pollIntervalMs: 5000,
     logger: deps.logger,
+    autoStart: deps.autoStart,
   });
 }

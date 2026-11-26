@@ -12,9 +12,16 @@ import {
   type ZodTypeProvider,
 } from "fastify-type-provider-zod";
 import type { JWK } from "jose";
+import type { ConsumerHandle } from "@kiro-ai-bit/eventing";
 import type { Db } from "@infrastructure/Persistence/db.js";
 import type { Queryable } from "@kiro-ai-bit/eventing";
-import { ensureGamificationEventing } from "@infrastructure/Eventing/index.js";
+import {
+  ensureGamificationEventing,
+  startGamificationConsumer,
+} from "@infrastructure/Eventing/index.js";
+import { createScheduleDoseClient } from "@infrastructure/ScheduleDoseClient/index.js";
+import { createConsumerDispatch } from "@application/EventConsumer/dispatch.js";
+import type { ConsumerDeps } from "@application/EventConsumer/deps.js";
 import { createJwksCache } from "@infrastructure/AuthzClient/jwks.js";
 import { createServiceTokenMinter } from "@infrastructure/AuthzClient/serviceToken.js";
 import {
@@ -38,6 +45,7 @@ const envSchema = z.object({
   SERVICE_PRIVATE_KEY: z.string().min(1),
   IDENTITY_JWKS_URL: z.string().min(1),
   CARE_BASE_URL: z.string().url(),
+  SCHEDULE_DOSE_BASE_URL: z.string().url(),
   SENTRY_DSN: z.string().optional().default(""),
   PORT: z.coerce.number().int().positive().default(3006),
   LOG_LEVEL: z.string().default("info"),
@@ -56,6 +64,7 @@ export interface AppConfig {
   servicePrivateKey: JWK;
   identityJwksUrl: string;
   careBaseUrl: string;
+  scheduleDoseBaseUrl: string;
   sentryDsn: string;
 }
 
@@ -74,6 +83,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     servicePrivateKey: JSON.parse(e.SERVICE_PRIVATE_KEY) as JWK,
     identityJwksUrl: e.IDENTITY_JWKS_URL,
     careBaseUrl: e.CARE_BASE_URL,
+    scheduleDoseBaseUrl: e.SCHEDULE_DOSE_BASE_URL,
     sentryDsn: e.SENTRY_DSN,
   };
 }
@@ -85,6 +95,7 @@ export interface AppDeps {
   brokerQueryable: Queryable;
   rateLimitOptions?: RateLimitOptions;
   fetchImpl?: typeof fetch;
+  startWorkers?: boolean;
 }
 
 export interface BuiltApp {
@@ -92,6 +103,7 @@ export interface BuiltApp {
   db: Db;
   metrics: MetricsImpl;
   checkLinkCache: ReturnType<typeof createCachedCheckLink>["cache"];
+  gamificationConsumer?: ConsumerHandle;
   close: () => Promise<void>;
 }
 
@@ -135,12 +147,6 @@ export async function buildApp(deps: AppDeps): Promise<BuiltApp> {
   });
   await app.register(rateLimitPlugin, deps.rateLimitOptions ?? {});
 
-  registerPlatformRoutes(app, {
-    db: deps.db,
-    broker: deps.brokerQueryable,
-    metrics,
-  });
-
   // Outbound service-JWT minter + Care check-link client (positive-only cache).
   const mintToken = createServiceTokenMinter(config.servicePrivateKey);
   const care = createCachedCheckLink(
@@ -164,12 +170,43 @@ export async function buildApp(deps: AppDeps): Promise<BuiltApp> {
     broker: deps.brokerQueryable,
   });
 
+  // Event consumer (ticket 23): DoseOutcomeChanged + AccountDeleted on the
+  // single 'gamification' consumer group; publishes nothing (no outbox).
+  const scheduleDose = createScheduleDoseClient({
+    baseUrl: config.scheduleDoseBaseUrl,
+    mintServiceToken: mintToken,
+    fetchImpl: deps.fetchImpl,
+  });
+  const consumerDeps: ConsumerDeps = {
+    db: deps.db,
+    scheduleDose,
+    checkLinkCache: care.cache,
+    metrics,
+    now: () => new Date(),
+  };
+  const gamificationConsumer = deps.startWorkers
+    ? await startGamificationConsumer({
+        service: deps.gamificationQueryable,
+        broker: deps.brokerQueryable,
+        dispatch: createConsumerDispatch(consumerDeps),
+      })
+    : undefined;
+
+  // LLD §3.3 step 8 — platform routes register last.
+  registerPlatformRoutes(app, {
+    db: deps.db,
+    broker: deps.brokerQueryable,
+    metrics,
+  });
+
   return {
     app,
     db: deps.db,
     metrics,
     checkLinkCache: care.cache,
+    gamificationConsumer,
     close: async () => {
+      if (gamificationConsumer) await gamificationConsumer.stop();
       await app.close();
     },
   };
